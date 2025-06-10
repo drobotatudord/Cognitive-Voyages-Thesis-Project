@@ -30,10 +30,46 @@ public class CharacterControllerDriverWrapper : MonoBehaviour
         }
     }
 
-    void Start()
+private void Start()
+{
+    StartCoroutine(ForceHeightAfterDelay());
+}
+
+private IEnumerator ForceHeightAfterDelay()
+{
+    float timer = 0f;
+    while ((xrOrigin == null || characterController == null || xrOrigin.Camera == null) && timer < 3f)
     {
-        StartCoroutine(SnapToGroundOnce());
+        yield return new WaitForSeconds(0.1f);
+        timer += 0.1f;
+
+        // Try re-fetching references in case XR initialized late
+        driver = GetComponent<CharacterControllerDriver>();
+        BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        var xrOriginField = typeof(CharacterControllerDriver).GetField("m_XROrigin", flags);
+        var ccField = typeof(CharacterControllerDriver).GetField("m_CharacterController", flags);
+        xrOrigin = xrOriginField?.GetValue(driver) as XROrigin;
+        characterController = ccField?.GetValue(driver) as CharacterController;
     }
+
+    if (xrOrigin == null || characterController == null || xrOrigin.Camera == null)
+    {
+        Debug.LogError("❌ Still missing references after delay.");
+        yield break;
+    }
+
+    Debug.Log("⏳ Forcing character height after delay (post-wait)...");
+    ForceUpdateCharacterController(); // ⬅️ keep this line
+
+    // 🔻 ADD THIS RIGHT AFTER:
+    if (xrOrigin.CameraFloorOffsetObject != null)
+    {
+        Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
+        offset.y -= 0.18f; // Slight lowering for all players
+        xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
+        Debug.Log($"📉 Manually lowered CameraFloorOffsetObject to {offset.y}");
+    }
+}
 
     private IEnumerator SnapToGroundOnce()
     {
@@ -59,17 +95,25 @@ public class CharacterControllerDriverWrapper : MonoBehaviour
 
 public void ForceUpdateCharacterController()
 {
-    if (heightInitialized || xrOrigin == null || characterController == null)
+    if (xrOrigin == null || characterController == null || xrOrigin.Camera == null)
+    {
+        Debug.LogWarning("❌ XR Origin or Character Controller is missing.");
         return;
+    }
 
     float cameraHeight = xrOrigin.CameraInOriginSpaceHeight;
-    float clampedHeight = Mathf.Clamp(cameraHeight, 0.9f, 1.8f);
-    float newHeight = clampedHeight + 0.1f;
+    float clampedHeight = Mathf.Clamp(cameraHeight, 0.9f, 1.65f);
+    float newHeight = clampedHeight + 0.02f; // very close fit
 
+    // ✅ Set height and center first
     characterController.height = newHeight;
     characterController.center = new Vector3(0, newHeight / 2f, 0);
+    Debug.Log($"📏 Setting CharacterController height to {newHeight}, center to {characterController.center}");
 
-    // ✅ Optional: snap to ground
+    // ✅ Small downward nudge to feel more grounded
+    characterController.Move(Vector3.down * 0.02f);
+
+    // ✅ Snap to ground if slightly off
     if (Physics.Raycast(xrOrigin.Camera.transform.position, Vector3.down, out RaycastHit hit, 2f))
     {
         float difference = hit.distance - clampedHeight * 0.5f;
@@ -79,7 +123,7 @@ public void ForceUpdateCharacterController()
         }
     }
 
-    // ✅ Optional: ceiling nudge
+    // ✅ Avoid ceiling clip just in case
     if (Physics.Raycast(xrOrigin.Camera.transform.position, Vector3.up, out RaycastHit ceilingCheck, 0.3f))
     {
         characterController.Move(Vector3.down * 0.2f);

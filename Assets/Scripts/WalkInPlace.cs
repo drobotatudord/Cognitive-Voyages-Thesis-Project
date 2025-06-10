@@ -2,6 +2,7 @@
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
 using Unity.XR.CoreUtils;
+using System.Collections;
 using TMPro;
 
 public class WalkInPlace : LocomotionProvider
@@ -57,6 +58,23 @@ public class WalkInPlace : LocomotionProvider
             UpdateUI(); // Set initial text
         }
     }
+
+private void Start()
+{
+    var wrapper = xrOrigin?.GetComponent<CharacterControllerDriverWrapper>();
+    if (wrapper != null)
+        wrapper.ForceUpdateCharacterController();
+
+    SnapToGroundIfNeeded(); // Immediate
+    StartCoroutine(SnapToGroundAgain()); // Optional backup
+}
+
+private IEnumerator SnapToGroundAgain()
+{
+    yield return new WaitForSeconds(0.2f);
+    SnapToGroundIfNeeded();
+}
+
 
     private void OnEnable()
     {
@@ -153,31 +171,45 @@ if (Physics.Raycast(rayOrigin, rayDirection, out forwardHit, 0.5f))
         return;
     }
 }
-
     characterController.Move(motion);
 
     if (!characterController.isGrounded)
-    {
-        RaycastHit hit;
-        if (Physics.Raycast(xrCamera.position, Vector3.down, out hit, 1f))
-        {
-            if (hit.collider.CompareTag("Ground")) // Optional tag check
-            {
-                characterController.Move(Vector3.down * 0.05f);
-            }
-        }
-    }
+{
+    SnapToGroundIfNeeded();
 }
 
-
+}
                 EndLocomotion();
-            }
+       }
         }
 
         // 🖼 Smooth UI fade while active
         if (uiText != null && !tutorialFinished)
             uiText.color = Color.Lerp(uiText.color, targetColor, Time.deltaTime * fadeSpeed);
     }
+
+
+    private void SnapToGroundIfNeeded()
+{
+    if (xrOrigin == null || xrOrigin.Camera == null) return;
+
+    CharacterController characterController = xrOrigin.GetComponent<CharacterController>();
+    if (characterController == null) return;
+
+    if (Physics.Raycast(xrOrigin.Camera.transform.position, Vector3.down, out RaycastHit hit, 2f, LayerMask.GetMask("Ground")))
+    {
+        float camHeight = xrOrigin.Camera.transform.position.y;
+        float targetY = hit.point.y + characterController.height / 2f;
+        float offset = camHeight - targetY;
+
+        if (Mathf.Abs(offset) > 0.05f)
+        {
+            characterController.Move(Vector3.down * offset);
+            Debug.Log("📏 Snapped to ground via SnapToGroundIfNeeded()");
+        }
+    }
+}
+
 
     private void UpdateUI()
     {
