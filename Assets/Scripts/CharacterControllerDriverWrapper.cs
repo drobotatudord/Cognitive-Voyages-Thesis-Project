@@ -65,7 +65,7 @@ private IEnumerator ForceHeightAfterDelay()
     if (xrOrigin.CameraFloorOffsetObject != null)
     {
         Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-        offset.y -= 0.18f; // Slight lowering for all players
+        offset.y -= 0.25f; // Slight lowering for all players
         xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
         Debug.Log($"📉 Manually lowered CameraFloorOffsetObject to {offset.y}");
     }
