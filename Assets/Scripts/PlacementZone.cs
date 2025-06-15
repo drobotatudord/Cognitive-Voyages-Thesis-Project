@@ -275,15 +275,22 @@ public void ForcePlayerExit()
         UpdateInventoryVisibility();
         UpdateItemNameDisplay();
 
+        // ✅ Clear the item's reference to this zone
         if (InventoryManager.Instance.currentItem != null)
         {
+            ItemController item = InventoryManager.Instance.currentItem.GetComponent<ItemController>();
+            if (item != null && item.GetCurrentZone() == this)
+            {
+                // ✅ Tell the item it's no longer in a valid zone
+                item.ClearCurrentZone();
+            }
+
             Destroy(InventoryManager.Instance.currentItem);
             InventoryManager.Instance.currentItem = null;
             InventoryManager.Instance.EnableAllButtons();
         }
     }
 }
-
 
     public bool IsPlayerInZone()
     {

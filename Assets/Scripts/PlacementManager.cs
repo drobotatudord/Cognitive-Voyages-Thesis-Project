@@ -26,6 +26,12 @@ public class PlacementManager : MonoBehaviour
 
     private int placedItemCount = 0; // ✅ Track number of placed items
 
+    public GameObject objectToDisable1; // Assign in inspector
+public GameObject objectToDisable2;
+public GameObject objectToDisable3;
+public MonoBehaviour scriptToDisable;
+public MonoBehaviour scriptToDisable2;
+
     private void Awake()
     {
         if (Instance == null)
@@ -114,6 +120,14 @@ public void DeregisterPlacement(string zoneID)
         if (filledZones >= 12) // ✅ When all 12 zones are filled
         {
             Debug.Log("All 12 placement zones are filled! Moving to Scene 2...");
+
+                // ✅ Disable game objects and script before fading
+    if (objectToDisable1 != null) objectToDisable1.SetActive(false);
+    if (objectToDisable2 != null) objectToDisable2.SetActive(false);
+    if (objectToDisable2 != null) objectToDisable3.SetActive(false);
+    if (scriptToDisable != null) scriptToDisable.enabled = false;
+    if (scriptToDisable != null) scriptToDisable2.enabled = false;
+
             StartCoroutine(LoadNextScene()); // ✅ Load Scene 2
         }
     }

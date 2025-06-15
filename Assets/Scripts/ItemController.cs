@@ -62,6 +62,12 @@ public void PlaceItem()
     }
 }
 
+public void ClearCurrentZone()
+{
+    currentZone = null;
+}
+
+
 public void ResetPlacement()
 {
     if (isPlaced && currentZone != null && currentZone.IsPlayerInZone()) // ✅ Check if player is in the correct zone

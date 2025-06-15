@@ -11,87 +11,63 @@ public class CharacterControllerDriverWrapper : MonoBehaviour
     private XROrigin xrOrigin;
     private CharacterController characterController;
 
-    void Awake()
+private bool offsetApplied = false;
+
+private float baseCameraHeight = -1f;
+
+private bool heightInitialized = false;
+
+private float GetCalibratedHeight()
+{
+    if (baseCameraHeight < 0f && xrOrigin != null && xrOrigin.Camera != null)
     {
-        driver = GetComponent<CharacterControllerDriver>();
-
-        // Use reflection to access Unity's private fields
-        BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
-
-        var xrOriginField = typeof(CharacterControllerDriver).GetField("m_XROrigin", flags);
-        var ccField = typeof(CharacterControllerDriver).GetField("m_CharacterController", flags);
-
-        xrOrigin = xrOriginField?.GetValue(driver) as XROrigin;
-        characterController = ccField?.GetValue(driver) as CharacterController;
-
-        if (xrOrigin == null || characterController == null)
-        {
-            Debug.LogError("❌ Failed to access XROrigin or CharacterController via reflection.");
-        }
+        baseCameraHeight = xrOrigin.CameraInOriginSpaceHeight;
+        Debug.Log($"📏 Calibrated Base Camera Height: {baseCameraHeight}");
     }
+    return baseCameraHeight;
+}
+
+void Awake()
+{
+    ApplyPersistentYOffset(force: true); // ← EARLY APPLICATION
+    driver = GetComponent<CharacterControllerDriver>();
+
+    // Use reflection to access Unity's private fields
+    BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+
+    var xrOriginField = typeof(CharacterControllerDriver).GetField("m_XROrigin", flags);
+    var ccField = typeof(CharacterControllerDriver).GetField("m_CharacterController", flags);
+
+    xrOrigin = xrOriginField?.GetValue(driver) as XROrigin;
+    characterController = ccField?.GetValue(driver) as CharacterController;
+
+    if (xrOrigin == null || characterController == null)
+    {
+        Debug.LogError("❌ Failed to access XROrigin or CharacterController via reflection.");
+    }
+    else
+    {
+        // ✅ Only set tracking mode if xrOrigin was found
+        xrOrigin.RequestedTrackingOriginMode = XROrigin.TrackingOriginMode.Floor;
+    }
+}
 
 private void Start()
 {
-    StartCoroutine(ForceHeightAfterDelay());
+    StartCoroutine(InitializeXRCharacterController());
 }
 
-private IEnumerator ForceHeightAfterDelay()
+public void ApplyPersistentYOffset(bool force = false)
 {
-    float timer = 0f;
-    while ((xrOrigin == null || characterController == null || xrOrigin.Camera == null) && timer < 3f)
-    {
-        yield return new WaitForSeconds(0.1f);
-        timer += 0.1f;
+    if ((offsetApplied && !force) || xrOrigin == null || xrOrigin.CameraFloorOffsetObject == null)
+        return;
 
-        // Try re-fetching references in case XR initialized late
-        driver = GetComponent<CharacterControllerDriver>();
-        BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
-        var xrOriginField = typeof(CharacterControllerDriver).GetField("m_XROrigin", flags);
-        var ccField = typeof(CharacterControllerDriver).GetField("m_CharacterController", flags);
-        xrOrigin = xrOriginField?.GetValue(driver) as XROrigin;
-        characterController = ccField?.GetValue(driver) as CharacterController;
-    }
+    var offsetObj = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
+    offsetObj.y = -0.30f;
+    xrOrigin.CameraFloorOffsetObject.transform.localPosition = offsetObj;
 
-    if (xrOrigin == null || characterController == null || xrOrigin.Camera == null)
-    {
-        Debug.LogError("❌ Still missing references after delay.");
-        yield break;
-    }
-
-    Debug.Log("⏳ Forcing character height after delay (post-wait)...");
-    ForceUpdateCharacterController(); // ⬅️ keep this line
-
-    // 🔻 ADD THIS RIGHT AFTER:
-    if (xrOrigin.CameraFloorOffsetObject != null)
-    {
-        Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-        offset.y -= 0.28f; // Slight lowering for all players
-        xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
-        Debug.Log($"📉 Manually lowered CameraFloorOffsetObject to {offset.y}");
-    }
+    offsetApplied = true;
 }
-
-    private IEnumerator SnapToGroundOnce()
-    {
-        yield return new WaitForSeconds(0.25f); // Let camera pose stabilize
-
-        if (xrOrigin != null && xrOrigin.Camera != null && characterController != null)
-        {
-            Vector3 cameraPos = xrOrigin.Camera.transform.position;
-
-            if (Physics.Raycast(cameraPos, Vector3.down, out RaycastHit hit, 2f))
-            {
-                float offset = hit.distance - (characterController.height / 2f);
-                if (Mathf.Abs(offset) > 0.05f)
-                {
-                    characterController.Move(Vector3.down * offset);
-                    Debug.Log("📏 Snapped to ground at start.");
-                }
-            }
-        }
-    }
-
-    private bool heightInitialized = false;
 
 public void ForceUpdateCharacterController()
 {
@@ -101,7 +77,8 @@ public void ForceUpdateCharacterController()
         return;
     }
 
-    float cameraHeight = xrOrigin.CameraInOriginSpaceHeight;
+    float cameraHeight = Mathf.Clamp(GetCalibratedHeight(), 0.9f, 1.65f);
+
     float clampedHeight = Mathf.Clamp(cameraHeight, 0.9f, 1.65f);
     float newHeight = clampedHeight + 0.02f; // very close fit
 
@@ -123,14 +100,35 @@ public void ForceUpdateCharacterController()
         }
     }
 
-    // ✅ Avoid ceiling clip just in case
-    if (Physics.Raycast(xrOrigin.Camera.transform.position, Vector3.up, out RaycastHit ceilingCheck, 0.3f))
+    heightInitialized = true;
+}
+
+private IEnumerator InitializeXRCharacterController()
+{
+    // Wait until XR Origin, Camera, and Floor Offset Object are ready
+    yield return new WaitUntil(() =>
+        xrOrigin != null &&
+        xrOrigin.Camera != null &&
+        xrOrigin.CameraFloorOffsetObject != null &&
+        characterController != null
+    );
+
+    yield return null; // Optional: wait one more frame for stability
+
+    // Apply persistent offset
+    ApplyPersistentYOffset(force: true);
+
+    // Set correct controller height
+    ForceUpdateCharacterController();
+
+    // Disable Unity's driver (important!)
+    if (driver != null)
     {
-        characterController.Move(Vector3.down * 0.2f);
-        Debug.Log("⬇️ Nudging down to avoid ceiling clip.");
+        driver.enabled = false;
+        Debug.Log("✅ Disabled CharacterControllerDriver after initialization.");
     }
 
-    heightInitialized = true;
+    Debug.Log("✅ XR Character Controller fully initialized.");
 }
 
 }

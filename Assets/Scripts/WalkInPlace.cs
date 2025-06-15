@@ -7,7 +7,7 @@ using TMPro;
 
 public class WalkInPlace : LocomotionProvider
 {
-    [Header("References")]
+    /* [Header("References")]
     public Transform xrCamera;
     public GameObject walkingStatusUI;
     public InputActionProperty toggleMovementAction; // Assigned to Left Thumbstick Click
@@ -39,6 +39,8 @@ public class WalkInPlace : LocomotionProvider
     private XROrigin xrOrigin;
     private TMP_Text uiText;
 
+    private bool syncedOnce = false;
+
     protected override void Awake()
     {
         base.Awake();
@@ -59,26 +61,32 @@ public class WalkInPlace : LocomotionProvider
         }
     }
 
-private void Start()
-{
-    var wrapper = xrOrigin?.GetComponent<CharacterControllerDriverWrapper>();
-    if (wrapper != null)
-        wrapper.ForceUpdateCharacterController();
+    private void Start()
+    {
+        var wrapper = xrOrigin?.GetComponent<CharacterControllerDriverWrapper>();
+        if (wrapper != null)
+        {
+            wrapper.ForceUpdateCharacterController();
+            wrapper.ApplyPersistentYOffset();
+        }
 
-    SnapToGroundIfNeeded(); // Immediate
-    StartCoroutine(SnapToGroundAgain()); // Optional backup
-}
+        SnapToGroundIfNeeded(); // Immediate
+        StartCoroutine(SnapToGroundAgain()); // Optional backup
+    }
 
-private IEnumerator SnapToGroundAgain()
-{
-    yield return new WaitForSeconds(0.2f);
-    SnapToGroundIfNeeded();
-}
-
+    private IEnumerator SnapToGroundAgain()
+    {
+        yield return new WaitForSeconds(0.2f);
+        SnapToGroundIfNeeded();
+    }
 
     private void OnEnable()
     {
         toggleMovementAction.action.Enable();
+
+        var wrapper = xrOrigin?.GetComponent<CharacterControllerDriverWrapper>();
+        if (wrapper != null)
+            wrapper.ApplyPersistentYOffset();
     }
 
     private void OnDisable()
@@ -86,9 +94,8 @@ private IEnumerator SnapToGroundAgain()
         toggleMovementAction.action.Disable();
     }
 
-    void Update()
+    private void Update()
     {
-        // ✅ Allow toggling walk mode anytime
         if (toggleMovementAction.action.WasPressedThisFrame())
         {
             movementEnabled = !movementEnabled;
@@ -101,26 +108,22 @@ private IEnumerator SnapToGroundAgain()
                 if (toggleCount >= maxToggles)
                 {
                     tutorialFinished = true;
-
                     if (walkingStatusUI != null)
-                        walkingStatusUI.SetActive(false); // ⛔ Hide UI permanently
+                        walkingStatusUI.SetActive(false);
                 }
             }
         }
 
-        // 🛑 Skip walking logic if needed
         if (!CanBeginLocomotion() || xrOrigin == null || !movementEnabled)
         {
             moveAmount = Mathf.Lerp(moveAmount, 0f, Time.deltaTime * smoothing * 2f);
 
-            // ✨ Fade UI only if tutorial is active
             if (uiText != null && !tutorialFinished)
                 uiText.color = Color.Lerp(uiText.color, targetColor, Time.deltaTime * fadeSpeed);
 
             return;
         }
 
-        // 👣 Head bob detection
         float currentY = xrCamera.localPosition.y;
         velocityY = (currentY - lastY) / Time.deltaTime;
         float bobPower = Mathf.Abs(velocityY);
@@ -137,13 +140,11 @@ private IEnumerator SnapToGroundAgain()
             isBobActive = false;
         }
 
-        // 🚶 Smooth movement
         if (isBobActive)
             moveAmount = Mathf.Lerp(moveAmount, stepSpeed, Time.deltaTime * smoothing);
         else
             moveAmount = Mathf.Lerp(moveAmount, 0f, Time.deltaTime * smoothing * 2f);
 
-        // 🎮 Apply movement
         if (moveAmount > deadzone)
         {
             if (BeginLocomotion())
@@ -154,62 +155,64 @@ private IEnumerator SnapToGroundAgain()
 
                 CharacterController characterController = xrOrigin.GetComponent<CharacterController>();
                 if (characterController != null)
-{
-    Vector3 motion = forward * moveAmount * Time.deltaTime;
+                {
+                    var wrapper = xrOrigin.GetComponent<CharacterControllerDriverWrapper>();
+                    if (wrapper != null)
+                    {
+                        wrapper.ForceUpdateCharacterController();
+                        wrapper.ApplyPersistentYOffset();
+                    }
 
-// 🚫 Check if player is about to walk into an unclimbable object
-RaycastHit forwardHit;
-Vector3 rayOrigin = xrCamera.position;
-Vector3 rayDirection = forward;
+                    Vector3 motion = forward * moveAmount * Time.deltaTime;
 
-if (Physics.Raycast(rayOrigin, rayDirection, out forwardHit, 0.5f))
-{
-    if (forwardHit.collider.CompareTag("Unclimbable"))
-    {
-        Debug.Log("⛔ Blocked by Unclimbable object");
-        EndLocomotion();
-        return;
-    }
-}
-    characterController.Move(motion);
+                    RaycastHit forwardHit;
+                    Vector3 rayOrigin = xrCamera.position;
+                    Vector3 rayDirection = forward;
 
-    if (!characterController.isGrounded)
-{
-    SnapToGroundIfNeeded();
-}
+                    if (Physics.Raycast(rayOrigin, rayDirection, out forwardHit, 0.5f))
+                    {
+                        if (forwardHit.collider.CompareTag("Unclimbable"))
+                        {
+                            Debug.Log("⛔ Blocked by Unclimbable object");
+                            EndLocomotion();
+                            return;
+                        }
+                    }
 
-}
+                    characterController.Move(motion);
+
+                    if (!characterController.isGrounded)
+                        SnapToGroundIfNeeded();
+                }
+
                 EndLocomotion();
-       }
+            }
         }
 
-        // 🖼 Smooth UI fade while active
         if (uiText != null && !tutorialFinished)
             uiText.color = Color.Lerp(uiText.color, targetColor, Time.deltaTime * fadeSpeed);
     }
 
-
     private void SnapToGroundIfNeeded()
-{
-    if (xrOrigin == null || xrOrigin.Camera == null) return;
-
-    CharacterController characterController = xrOrigin.GetComponent<CharacterController>();
-    if (characterController == null) return;
-
-    if (Physics.Raycast(xrOrigin.Camera.transform.position, Vector3.down, out RaycastHit hit, 2f, LayerMask.GetMask("Ground")))
     {
-        float camHeight = xrOrigin.Camera.transform.position.y;
-        float targetY = hit.point.y + characterController.height / 2f;
-        float offset = camHeight - targetY;
+        if (xrOrigin == null || xrOrigin.Camera == null) return;
 
-        if (Mathf.Abs(offset) > 0.05f)
+        CharacterController characterController = xrOrigin.GetComponent<CharacterController>();
+        if (characterController == null) return;
+
+        if (Physics.Raycast(xrOrigin.Camera.transform.position, Vector3.down, out RaycastHit hit, 2f, LayerMask.GetMask("Ground")))
         {
-            characterController.Move(Vector3.down * offset);
-            Debug.Log("📏 Snapped to ground via SnapToGroundIfNeeded()");
+            float camHeight = xrOrigin.Camera.transform.position.y;
+            float targetY = hit.point.y + characterController.height / 2f;
+            float offset = camHeight - targetY;
+
+            if (Mathf.Abs(offset) > 0.05f)
+            {
+                characterController.Move(Vector3.down * offset);
+                Debug.Log("📏 Snapped to ground via SnapToGroundIfNeeded()");
+            }
         }
     }
-}
-
 
     private void UpdateUI()
     {
@@ -227,7 +230,7 @@ if (Physics.Raycast(rayOrigin, rayDirection, out forwardHit, 0.5f))
         {
             uiText.text = $"🚶 Walking Enabled\n{tutorialStep}";
             targetColor = new Color(uiText.color.r, uiText.color.g, uiText.color.b, 125f / 255f);
-        }
+        }r
         else
         {
             uiText.text = $"⏸️ Walking Disabled\n{tutorialStep}";
@@ -235,20 +238,16 @@ if (Physics.Raycast(rayOrigin, rayDirection, out forwardHit, 0.5f))
         }
     }
 
-private bool syncedOnce = false;
-
-void LateUpdate()
+private void LateUpdate()
 {
-    if (!syncedOnce && system != null && system.xrOrigin != null)
+    if (system != null && system.xrOrigin != null)
     {
         var wrapper = system.xrOrigin.GetComponent<CharacterControllerDriverWrapper>();
         if (wrapper != null)
         {
-            wrapper.ForceUpdateCharacterController();
-            syncedOnce = true;
+            wrapper.ApplyPersistentYOffset(force: true); // ✅ Force it every frame
         }
     }
 }
-
-
+*/
 }
