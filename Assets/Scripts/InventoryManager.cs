@@ -22,7 +22,7 @@ public class InventoryManager : MonoBehaviour
      public GameObject inventoryUItotalItemsPlaced;
 
 
-    public Vector2 buttonSpacing = new Vector2(120, 120);
+    public Vector2 buttonSpacing = new Vector2(100, 100);
 
     [HideInInspector] 
     public GameObject currentItem;  // ✅ Now accessible by ButtonItemHandler
@@ -66,21 +66,24 @@ public class InventoryManager : MonoBehaviour
     }
 }
 
-        // ✅ Modified Reset Logic
-        if (resetAction.action.WasPressedThisFrame())
-        {
-            PlacementZone[] zones = FindObjectsOfType<PlacementZone>();
+if (resetAction.action.WasPressedThisFrame())
+{
+    if (PlacementManager.Instance != null && PlacementManager.Instance.isTransitioning)
+        return;
 
-            foreach (var zone in zones)
-            {
-                // ✅ Only reset the item if the player is in this specific zone
-                if (zone.IsPlayerInZone() && zone.IsOccupied())
-                {
-                    zone.ResetZone();
-                    break; // ✅ Exit the loop after resetting the item in the current zone
-                }
-            }
+    PlacementZone[] zones = FindObjectsOfType<PlacementZone>();
+    foreach (var zone in zones)
+    {
+        if (zone.IsPlayerInZone() && zone.IsOccupied())
+        {
+            zone.ResetZone();
+            return; // ✅ Only reset one, stop here
         }
+    }
+
+    Debug.Log("❌ Cannot reset: player is not inside any occupied placement zone.");
+}
+
     }
 
     public void ToggleInventory(bool isVisible)
@@ -129,7 +132,7 @@ public void ResetInventoryInitialization()
         TextMeshProUGUI text = button.GetComponentInChildren<TextMeshProUGUI>();
         if (text != null)
         {
-            text.color = isUsed ? new Color(0.6f, 0.6f, 0.6f, 0.7f) : Color.white;
+            text.color = isUsed ? new Color(0.6f, 0.6f, 0.6f, 0.7f) : new Color32(255, 241, 85, 255);
         }
     }
 }

@@ -66,7 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: -6478536213147159724, guid: bfe7d708fda74a44eaa4e4e7c7da2f96, type: 3}
+  - {fileID: 2100000, guid: f4d62baf4e9db7643a3e7bd79d07e167, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -100,6 +100,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01fe66308513c8c448893f878f24d28a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  snapAnchor: {fileID: 0}
   audioSource: {fileID: -3874244438579498887}
   placementSound: {fileID: 8300000, guid: 4e42c7e2a1707a24e8995fc536b00f35, type: 3}
 --- !u!82 &-3874244438579498887

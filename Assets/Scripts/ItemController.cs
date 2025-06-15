@@ -70,6 +70,12 @@ public void ClearCurrentZone()
 
 public void ResetPlacement()
 {
+    if (PlacementManager.Instance != null && PlacementManager.Instance.isTransitioning)
+    {
+        Debug.LogWarning("Reset blocked: transitioning to next scene.");
+        return;
+    }
+
     if (isPlaced && currentZone != null && currentZone.IsPlayerInZone()) // ✅ Check if player is in the correct zone
     {
         currentZone.RemoveItem();
@@ -81,6 +87,7 @@ public void ResetPlacement()
         Debug.Log("You must be in the correct placement zone to reset this item!");
     }
 }
+
 
 
 public void MoveToSnap(Transform snapPoint)

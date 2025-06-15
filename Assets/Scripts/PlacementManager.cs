@@ -32,6 +32,10 @@ public GameObject objectToDisable3;
 public MonoBehaviour scriptToDisable;
 public MonoBehaviour scriptToDisable2;
 
+[HideInInspector]
+public bool isTransitioning = false;
+
+
     private void Awake()
     {
         if (Instance == null)
@@ -120,6 +124,7 @@ public void DeregisterPlacement(string zoneID)
         if (filledZones >= 12) // ✅ When all 12 zones are filled
         {
             Debug.Log("All 12 placement zones are filled! Moving to Scene 2...");
+            isTransitioning = true;
 
                 // ✅ Disable game objects and script before fading
     if (objectToDisable1 != null) objectToDisable1.SetActive(false);

@@ -62,12 +62,14 @@ public void ApplyPersistentYOffset(bool force = false)
     if ((offsetApplied && !force) || xrOrigin == null || xrOrigin.CameraFloorOffsetObject == null)
         return;
 
-    var offsetObj = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-    offsetObj.y = -0.30f;
-    xrOrigin.CameraFloorOffsetObject.transform.localPosition = offsetObj;
+    Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
+    offset.y = -0.30f;
+    xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
 
     offsetApplied = true;
+    Debug.Log("📏 Persistent Y-offset (-0.30) applied to CameraFloorOffsetObject.");
 }
+
 
 public void ForceUpdateCharacterController()
 {
@@ -105,7 +107,6 @@ public void ForceUpdateCharacterController()
 
 private IEnumerator InitializeXRCharacterController()
 {
-    // Wait until XR Origin, Camera, and Floor Offset Object are ready
     yield return new WaitUntil(() =>
         xrOrigin != null &&
         xrOrigin.Camera != null &&
@@ -113,22 +114,19 @@ private IEnumerator InitializeXRCharacterController()
         characterController != null
     );
 
-    yield return null; // Optional: wait one more frame for stability
+    yield return null;
 
-    // Apply persistent offset
-    ApplyPersistentYOffset(force: true);
-
-    // Set correct controller height
+    ApplyPersistentYOffset(force: true);       // ✅ Always apply
     ForceUpdateCharacterController();
 
-    // Disable Unity's driver (important!)
     if (driver != null)
     {
         driver.enabled = false;
-        Debug.Log("✅ Disabled CharacterControllerDriver after initialization.");
+        Debug.Log("✅ CharacterControllerDriver disabled after setup.");
     }
 
-    Debug.Log("✅ XR Character Controller fully initialized.");
+    Debug.Log("✅ Character Controller initialized for all movement modes.");
 }
+
 
 }

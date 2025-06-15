@@ -4,7 +4,9 @@ using Unity.XR.CoreUtils;
 
 public class XROriginAutoAlign : MonoBehaviour
 {
+
     private XROrigin xrOrigin;
+    private bool heightOffsetApplied = false;
 
     private IEnumerator Start()
     {

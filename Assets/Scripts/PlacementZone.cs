@@ -28,6 +28,7 @@ public class PlacementZone : MonoBehaviour
     [Header("Meshes to Toggle")]
 public GameObject[] meshesToToggle;
 
+public static PlacementZone CurrentZonePlayerIsIn; // ✅ GLOBAL TRACKING
 
     private void Awake()
     {
@@ -65,14 +66,15 @@ public GameObject[] meshesToToggle;
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+private void OnTriggerEnter(Collider other)
 {
     if (other.CompareTag("Player") && !playerInZone)
     {
         playerInZone = true;
+        CurrentZonePlayerIsIn = this; // ✅ Set
         shouldHideNameWhileInside = true;
         UpdateInventoryVisibility();
-        UpdateItemNameDisplay(); // 👈 Refresh label
+        UpdateItemNameDisplay();
     }
 }
 
@@ -81,9 +83,12 @@ private void OnTriggerExit(Collider other)
     if (other.CompareTag("Player") && playerInZone)
     {
         playerInZone = false;
+        if (CurrentZonePlayerIsIn == this)
+            CurrentZonePlayerIsIn = null; // ✅ Clear
+
         shouldHideNameWhileInside = false;
         UpdateInventoryVisibility();
-        UpdateItemNameDisplay(); // 👈 Restore default label
+        UpdateItemNameDisplay();
 
         if (InventoryManager.Instance.currentItem != null)
         {
@@ -234,11 +239,18 @@ private void SnapItemToZone(ItemController item)
         }
     }
 
-    public void ResetZone()
+public void ResetZone()
+{
+    if (PlacementManager.Instance != null && PlacementManager.Instance.isTransitioning)
     {
-        RemoveItem();
-        InventoryManager.Instance.TriggerHapticFeedback(0.8f, 0.3f);
+        Debug.LogWarning("❌ Reset blocked: Scene transition in progress.");
+        return;
     }
+
+    RemoveItem();
+    InventoryManager.Instance.TriggerHapticFeedback(0.8f, 0.3f);
+}
+
 
 private void UpdateInventoryVisibility()
 {

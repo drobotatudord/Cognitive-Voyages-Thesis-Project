@@ -77,40 +77,42 @@ private void OnTriggerEnter(Collider other)
 }
 
 
-    public void PlaceItem(string itemName)
+   public void PlaceItem(string itemName)
+{
+    if (isOccupied)
     {
-        if (isOccupied)
-        {
-            Debug.Log($"🚫 Zone {zoneID} is already occupied.");
-            RecallInventoryManager.Instance.ToggleInventory(false); // ✅ Just close inventory if occupied
-            return;
-        }
+        Debug.Log($"🚫 Zone {zoneID} is already occupied.");
+        RecallInventoryManager.Instance.ToggleInventory(false); // ✅ Just close inventory if occupied
+        return;
+    }
 
-        if (!RecallPlacementManager.Instance.RegisterPlacement(zoneID, itemName))
-        {
-            return; // ✅ Prevents duplicate placement
-        }
+    // ✅ Only mark zone as occupied AFTER placement is registered
+    if (!RecallPlacementManager.Instance.RegisterPlacement(zoneID, itemName))
+    {
+        Debug.LogWarning($"❌ Placement registration failed for {zoneID}");
+        return;
+    }
 
-        placedItemName = itemName;
-        isOccupied = true;
+    placedItemName = itemName;
+    isOccupied = true;
 
-        GameObject itemPrefab = RecallInventoryManager.Instance.GetItemPrefab(itemName);
-        if (itemPrefab != null)
-        {
+    GameObject itemPrefab = RecallInventoryManager.Instance.GetItemPrefab(itemName);
+    if (itemPrefab != null)
+    {
         GameObject placedObject = Instantiate(itemPrefab, snapPoint.position + Vector3.up * 0.18f, snapPoint.rotation);
         ItemController itemController = placedObject.GetComponent<ItemController>();
 
-            if (itemController != null)
-            {
-                itemController.MoveToSnap(snapPoint); // ✅ Call animation method
-            }
+        if (itemController != null)
+        {
+            itemController.MoveToSnap(snapPoint);
         }
-
-        UpdateDisplayText();
-        UpdateHighlight(); // ✅ Ensure highlight turns OFF when item is placed
-        RecallInventoryManager.Instance.DisableItemButton(itemName);
-        RecallInventoryManager.Instance.ToggleInventory(false);
     }
+
+    UpdateDisplayText();
+    UpdateHighlight();
+    RecallInventoryManager.Instance.DisableItemButton(itemName);
+    RecallInventoryManager.Instance.ToggleInventory(false);
+}
 
 
     public void ForcePlayerEnter()
