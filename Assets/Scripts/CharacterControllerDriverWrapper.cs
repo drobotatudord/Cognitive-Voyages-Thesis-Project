@@ -63,7 +63,7 @@ public void ApplyPersistentYOffset(bool force = false)
         return;
 
     Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-    offset.y = -0.30f;
+    offset.y = -0.90f;
     xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
 
     offsetApplied = true;
@@ -102,6 +102,16 @@ public void ForceUpdateCharacterController()
         }
     }
 
+    // 🔁 Force camera offset back to -0.90f again (teleport safe)
+if (xrOrigin.CameraFloorOffsetObject != null)
+{
+    Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
+    offset.y = -0.90f;
+    xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
+    Debug.Log("📏 Re-applied -0.90f offset after character controller sync.");
+}
+
+
     heightInitialized = true;
 }
 
@@ -127,6 +137,4 @@ private IEnumerator InitializeXRCharacterController()
 
     Debug.Log("✅ Character Controller initialized for all movement modes.");
 }
-
-
 }

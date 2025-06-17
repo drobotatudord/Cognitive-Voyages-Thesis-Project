@@ -5,7 +5,7 @@ using Unity.XR.CoreUtils;
 public class PersistentHeightOffset : MonoBehaviour
 {
     [Tooltip("Offset applied to the CameraFloorOffsetObject Y position.")]
-    public float heightOffset = -0.30f;
+    public float heightOffset = -0.60f;
 
     private XROrigin xrOrigin;
     private bool applied = false;

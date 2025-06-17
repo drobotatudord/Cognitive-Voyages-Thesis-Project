@@ -1,9 +1,13 @@
 ﻿using UnityEngine;
+using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 using Unity.XR.CoreUtils;
+using System.Collections;
 using System.Collections.Generic;
 
+[RequireComponent(typeof(CharacterController))]
 public class HeadBobMovement : LocomotionProvider
+
 {
     [Header("References")]
     public Transform xrCamera; // Usually the Main Camera
@@ -38,36 +42,52 @@ public class HeadBobMovement : LocomotionProvider
 
     private float lastSyncedHeight = -1f;
 
+    private bool allowMovement = false;
+
+
 void Start()
 {
-    if (xrOrigin == null)
+    StartCoroutine(InitializeWhenReady());
+}
+
+private IEnumerator InitializeWhenReady()
+{
+    // ✅ Safeguard against missing references
+    if (xrCamera == null || xrOrigin == null)
     {
-        Debug.LogError("XR Origin is not assigned in HeadBobMovement.");
-        return;
+        Debug.LogError("❌ Missing XR references. Please assign xrCamera and xrOrigin in the inspector.");
+        yield break;
     }
 
-    // 🔧 Set fixed XR Origin offset to ensure consistent height
+    yield return new WaitForSeconds(0.5f);
+
+    while (xrCamera.localPosition.y < 0.2f)
+    {
+        yield return null;
+    }
+
+    baseCameraLocalY = xrCamera.localPosition.y;
+    lastCameraPosition = xrCamera.localPosition;
+
+    // Assign CharacterController
+    characterController = xrOrigin.GetComponent<CharacterController>();
+    if (characterController == null)
+    {
+        Debug.LogError("❌ CharacterController not found on XR Origin. Please add one.");
+        yield break;
+    }
+
+    // Set consistent height offset
     if (xrOrigin.CameraFloorOffsetObject != null)
     {
         Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-        offset.y = -0.30f;
+        offset.y = -0.90f;
         xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
-        Debug.Log("📏 XR Origin Y offset set to -0.30f for consistency");
+        Debug.Log("📏 XR Origin Y offset set to -0.90f for consistency (delayed)");
     }
 
-    characterController = xrOrigin.GetComponent<CharacterController>();
-
-    if (characterController == null)
-    {
-        Debug.LogError("CharacterController not found on XR Origin's Origin GameObject.");
-        return;
-    }
-
-    baseCameraLocalY = xrCamera.localPosition.y; // 🧠 Baseline for bobbing
-    lastCameraPosition = xrCamera.localPosition;
+    allowMovement = true;
 }
-
-
 
     void Update()
     {
@@ -98,43 +118,38 @@ void Start()
 
 void FixedUpdate()
 {
-    if (BeginLocomotion())
+    if (!allowMovement || !BeginLocomotion()) return;
+
+    if (moveSpeed > 0.01f && characterController != null)
     {
-        if (moveSpeed > 0.01f && characterController != null)
-        {
-            Vector3 desiredDirection = xrCamera.forward;
-            desiredDirection.y = Mathf.Lerp(desiredDirection.y, 0f, 0.9f);
-            desiredDirection.Normalize();
+        Vector3 desiredDirection = xrCamera.forward;
+        desiredDirection.y = Mathf.Lerp(desiredDirection.y, 0f, 0.9f);
+        desiredDirection.Normalize();
 
-            smoothedDirection = Vector3.Lerp(smoothedDirection, desiredDirection, Time.fixedDeltaTime * 5f);
-            characterController.Move(smoothedDirection * moveSpeed * Time.fixedDeltaTime);
+        smoothedDirection = Vector3.Lerp(smoothedDirection, desiredDirection, Time.fixedDeltaTime * 5f);
+        characterController.Move(smoothedDirection * moveSpeed * Time.fixedDeltaTime);
 
-            // 🔼 Small lift if grounded to stay flush with ramps
-           /* if (characterController.isGrounded)
-            {
-                float verticalNudge = (xrCamera.localPosition.y - lastCameraPosition.y) * 0.5f;
-                verticalNudge = Mathf.Clamp(verticalNudge, -0.02f, 0.05f); // ⬅️ Clamp here
-                characterController.Move(Vector3.up * verticalNudge);
-            } */
-
-            // 🔽 Fall correction if not grounded
-            if (!characterController.isGrounded)
-                characterController.Move(Vector3.down * 0.05f);
-        }
-
-        EndLocomotion();
+        if (!characterController.isGrounded)
+            characterController.Move(Vector3.down * 0.05f);
     }
+
+    EndLocomotion();
 }
-
-
 
 void SyncColliderToCamera()
 {
+    if (characterController == null)
+    {
+        Debug.LogWarning("⚠️ characterController is null in SyncColliderToCamera.");
+        return;
+    }
+
     float cameraHeight = xrCamera.localPosition.y;
     float newHeight = Mathf.Clamp(cameraHeight, 1f, 2.5f);
     characterController.height = newHeight;
     characterController.center = new Vector3(0, newHeight / 2f, 0);
 }
+
 
     void GetHeadFrameInput()
     {
@@ -216,14 +231,14 @@ Vector2 ReturnBobbingRange()
         camRot.x = -camRot.x;
     }
 
-    void LateUpdate()
+void LateUpdate()
 {
     if (xrOrigin != null && xrOrigin.CameraFloorOffsetObject != null)
     {
         Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-        if (Mathf.Abs(offset.y + 0.30f) > 0.001f)
+        if (Mathf.Abs(offset.y + 0.90f) > 0.001f)
         {
-            offset.y = -0.30f;
+            offset.y = -0.90f;
             xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
             Debug.Log("🔁 Reapplied Y offset in LateUpdate");
         }

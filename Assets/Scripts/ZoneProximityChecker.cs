@@ -8,26 +8,34 @@ public class ZoneProximityChecker : MonoBehaviour
 
     private PlacementZone currentZone;
 
-    void Update()
-    {
-        Collider[] hits = Physics.OverlapSphere(transform.position, checkRadius, zoneLayer);
+void Update()
+{
+    Collider[] hits = Physics.OverlapSphere(transform.position, checkRadius, zoneLayer);
 
-        if (hits.Length > 0)
+    if (hits.Length > 0)
+    {
+        PlacementZone zone = hits[0].GetComponent<PlacementZone>();
+
+        if (zone != null)
         {
-            PlacementZone zone = hits[0].GetComponent<PlacementZone>();
-            if (zone != null && zone != currentZone)
+            currentZone = zone;
+
+            // Always force re-check to ensure inventory visibility after teleport
+            if (!zone.IsOccupied())
             {
-                EnterZone(zone);
-            }
-        }
-        else
-        {
-            if (currentZone != null)
-            {
-                ExitZone(currentZone);
+                zone.ForcePlayerEnter();
             }
         }
     }
+    else
+    {
+        if (currentZone != null)
+        {
+            ExitZone(currentZone);
+        }
+    }
+}
+
 
 private void EnterZone(PlacementZone zone)
 {
@@ -45,4 +53,11 @@ private void EnterZone(PlacementZone zone)
         zone.ForcePlayerExit(); // simulate trigger exit
         currentZone = null;
     }
+
+    void OnDrawGizmos()
+{
+    Gizmos.color = Color.red; // Or whatever color you like
+    Gizmos.DrawWireSphere(transform.position, checkRadius);
+}
+
 }

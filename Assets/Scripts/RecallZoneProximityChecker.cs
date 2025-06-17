@@ -7,45 +7,35 @@ public class RecallZoneProximityChecker : MonoBehaviour
 
     private RecallPlacementZone currentZone;
 
-void Update()
-{
-    Collider[] hits = Physics.OverlapSphere(transform.position, checkRadius, zoneLayer);
-
-if (hits.Length > 0)
-{
-    RecallPlacementZone zone = hits[0].GetComponent<RecallPlacementZone>();
-   if (zone != null)
-{
-    // Always update current zone
-    currentZone = zone;
-
-    // ✅ ALWAYS try to open inventory if zone is not occupied
-    if (!zone.IsOccupied())
+    void Update()
     {
-        zone.ForcePlayerEnter();
-    }
-}
+        Collider[] hits = Physics.OverlapSphere(transform.position, checkRadius, zoneLayer);
 
-}
-
-    else
-    {
-        if (currentZone != null)
+        if (hits.Length > 0)
         {
-            ExitZone(currentZone);
+            RecallPlacementZone zone = hits[0].GetComponent<RecallPlacementZone>();
+
+            if (zone != null)
+            {
+                // ✅ Always update zone reference (even if same as before)
+                currentZone = zone;
+
+                // ✅ Force inventory open if not occupied
+                if (!zone.IsOccupied())
+                {
+                    zone.ForcePlayerEnter();
+                }
+            }
+        }
+        else
+        {
+            // ✅ Exit logic when no zone is nearby
+            if (currentZone != null)
+            {
+                ExitZone(currentZone);
+            }
         }
     }
-}
-
-
-private void EnterZone(RecallPlacementZone zone)
-{
-    if (zone == null || zone == currentZone) return;
-    if (zone.IsOccupied()) return;
-
-    currentZone = zone;
-    zone.ForcePlayerEnter(); // ✅ This should handle inventory toggling
-}
 
     private void ExitZone(RecallPlacementZone zone)
     {
