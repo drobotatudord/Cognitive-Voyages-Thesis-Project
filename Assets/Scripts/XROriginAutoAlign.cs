@@ -8,6 +8,9 @@ public class XROriginAutoAlign : MonoBehaviour
     private XROrigin xrOrigin;
     private bool heightOffsetApplied = false;
 
+    public static bool IsOriginAligned { get; private set; }
+
+
     private IEnumerator Start()
     {
         yield return null; // Wait one frame for XR system to initialize
@@ -17,6 +20,7 @@ public class XROriginAutoAlign : MonoBehaviour
         {
             Debug.Log("📍 Auto-aligning XR Origin to headset start position...");
             xrOrigin.MoveCameraToWorldLocation(xrOrigin.Camera.transform.position);
+            IsOriginAligned = true;
         }
         else
         {

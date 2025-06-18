@@ -44,11 +44,24 @@ public class HeadBobMovement : LocomotionProvider
 
     private bool allowMovement = false;
 
+    public bool waitForAutoAlign = true;
+    private bool originAligned = false;
+
 
 void Start()
 {
+   if (waitForAutoAlign)
+        StartCoroutine(WaitForAlignmentThenInit());
+    else
+        StartCoroutine(InitializeWhenReady());
+}
+
+private IEnumerator WaitForAlignmentThenInit()
+{
+    yield return new WaitUntil(() => XROriginAutoAlign.IsOriginAligned); // ✅ Wait for the static flag
     StartCoroutine(InitializeWhenReady());
 }
+
 
 private IEnumerator InitializeWhenReady()
 {
@@ -96,7 +109,7 @@ private IEnumerator InitializeWhenReady()
 
 
         float camHeight = xrCamera.localPosition.y;
-    if (Mathf.Abs(camHeight - lastSyncedHeight) > 0.1f)
+    if (Mathf.Abs(camHeight - lastSyncedHeight) > 0.2f)
     {
         SyncColliderToCamera();
         lastSyncedHeight = camHeight;
@@ -131,6 +144,20 @@ void FixedUpdate()
 
         if (!characterController.isGrounded)
             characterController.Move(Vector3.down * 0.05f);
+
+
+            RaycastHit hit;
+Vector3 rayOrigin = xrCamera.position;
+if (Physics.Raycast(rayOrigin, Vector3.down, out hit, 2f))
+{
+    float distanceToGround = hit.distance;
+   if (distanceToGround > 0.1f && distanceToGround < 0.8f)
+{
+    characterController.Move(Vector3.down * distanceToGround * 0.5f);
+}
+
+}
+
     }
 
     EndLocomotion();
@@ -175,8 +202,8 @@ void SyncColliderToCamera()
 
             if (delta >= minPeak && delta <= maxPeak)
             {
-                speedTimer += Time.deltaTime * accelerationMultiplier;
-                targetSpeed = Mathf.Clamp(delta * multiplier, 0, maxSpeed);
+                speedTimer += Time.smoothDeltaTime * accelerationMultiplier;
+                targetSpeed = Mathf.Lerp(targetSpeed, Mathf.Clamp(delta * multiplier, 0, maxSpeed), 0.2f);
             }
             else
             {
@@ -231,7 +258,7 @@ Vector2 ReturnBobbingRange()
         camRot.x = -camRot.x;
     }
 
-void LateUpdate()
+/* void LateUpdate()
 {
     if (xrOrigin != null && xrOrigin.CameraFloorOffsetObject != null)
     {
@@ -244,4 +271,5 @@ void LateUpdate()
         }
     }
 }
+*/
 }
