@@ -47,6 +47,10 @@ public class HeadBobMovement : LocomotionProvider
     public bool waitForAutoAlign = true;
     private bool originAligned = false;
 
+    private Vector3 previousPosition;
+    private float stuckTimer = 0f;
+    private float boostThreshold = 0.4f; // Seconds of being stuck before boosting
+    private float boostDistance = 0.15f; // How far to nudge
 
 void Start()
 {
@@ -141,6 +145,30 @@ void FixedUpdate()
 
         smoothedDirection = Vector3.Lerp(smoothedDirection, desiredDirection, Time.fixedDeltaTime * 5f);
         characterController.Move(smoothedDirection * moveSpeed * Time.fixedDeltaTime);
+
+        // Check if player is moving forward but not actually advancing
+float movementDelta = Vector3.Distance(xrOrigin.transform.position, previousPosition);
+
+if (moveSpeed > 0.05f && movementDelta < 0.001f)
+{
+    stuckTimer += Time.fixedDeltaTime;
+    if (stuckTimer >= boostThreshold)
+    {
+        Vector3 boostDirection = smoothedDirection;
+        boostDirection.y = 0;
+        boostDirection.Normalize();
+        characterController.Move(boostDirection * boostDistance);
+        stuckTimer = 0f; // Reset after boost
+    }
+}
+else
+{
+    stuckTimer = 0f; // Reset if moving normally
+}
+
+// Update previous position
+previousPosition = xrOrigin.transform.position;
+
 
         if (!characterController.isGrounded)
             characterController.Move(Vector3.down * 0.05f);
