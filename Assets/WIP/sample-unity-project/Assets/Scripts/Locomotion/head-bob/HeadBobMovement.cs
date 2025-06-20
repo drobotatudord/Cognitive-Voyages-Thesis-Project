@@ -110,6 +110,7 @@ private IEnumerator InitializeWhenReady()
     {
         SetMoveDirection();
         GetHeadFrameInput();
+        CheckCameraInsideController();
 
 
         float camHeight = xrCamera.localPosition.y;
@@ -144,7 +145,13 @@ void FixedUpdate()
         desiredDirection.Normalize();
 
         smoothedDirection = Vector3.Lerp(smoothedDirection, desiredDirection, Time.fixedDeltaTime * 5f);
-        characterController.Move(smoothedDirection * moveSpeed * Time.fixedDeltaTime);
+      CollisionFlags flags = characterController.Move(smoothedDirection * moveSpeed * Time.fixedDeltaTime);
+if (flags == CollisionFlags.None)
+{
+    // Player tried to walk but got stuck (not colliding with anything)
+    // Optional: trigger debug logs or fallback behavior
+}
+
 
         // Check if player is moving forward but not actually advancing
 float movementDelta = Vector3.Distance(xrOrigin.transform.position, previousPosition);
@@ -185,8 +192,8 @@ if (Physics.Raycast(rayOrigin, Vector3.down, out hit, 2f))
 }
 
 }
-
     }
+    RealignRigIfNeeded(0.25f); // Tight check for minor drift during movement
 
     EndLocomotion();
 }
@@ -247,6 +254,36 @@ void SyncColliderToCamera()
         moveSpeed = targetSpeed * (speedTimer / timeTillMaxSpeed);
     }
 
+void RealignRigIfNeeded(float threshold = 0.25f)
+{
+    if (xrCamera != null && xrOrigin != null && xrOrigin.Camera != null)
+    {
+        float distance = Vector3.Distance(xrCamera.position, xrOrigin.Camera.transform.position);
+        if (distance > threshold)
+        {
+            xrOrigin.MoveCameraToWorldLocation(xrCamera.position);
+            Debug.LogWarning($"📍 XR Origin auto-realigned to camera (Δ = {distance:F3}m)");
+        }
+        else
+        {
+            // Debug.Log($"✅ Alignment within threshold (Δ = {distance:F3}m)");
+        }
+    }
+}
+
+    void CheckCameraInsideController()
+{
+    Vector3 cameraLocal = xrOrigin.Camera.transform.localPosition;
+    float controllerRadius = characterController.radius;
+
+    if (Mathf.Abs(cameraLocal.x) > controllerRadius || Mathf.Abs(cameraLocal.z) > controllerRadius)
+    {
+        Debug.LogWarning("🚫 Camera escaped collider bounds. Resetting...");
+        xrOrigin.MoveCameraToWorldLocation(xrOrigin.Camera.transform.position);
+    }
+}
+
+
 Vector2 ReturnBobbingRange()
 {
     float offset = CalculateDegreeAdjustmentValue();
@@ -286,18 +323,10 @@ Vector2 ReturnBobbingRange()
         camRot.x = -camRot.x;
     }
 
-/* void LateUpdate()
+void LateUpdate()
 {
-    if (xrOrigin != null && xrOrigin.CameraFloorOffsetObject != null)
-    {
-        Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-        if (Mathf.Abs(offset.y + 0.90f) > 0.001f)
-        {
-            offset.y = -0.90f;
-            xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
-            Debug.Log("🔁 Reapplied Y offset in LateUpdate");
-        }
-    }
+
+    RealignRigIfNeeded(0.5f); // Looser check as a fallback
+
 }
-*/
 }
