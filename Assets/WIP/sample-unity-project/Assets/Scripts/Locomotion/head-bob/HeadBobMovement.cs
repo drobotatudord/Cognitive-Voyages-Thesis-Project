@@ -98,7 +98,7 @@ private IEnumerator InitializeWhenReady()
     if (xrOrigin.CameraFloorOffsetObject != null)
     {
         Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-        offset.y = -0.90f;
+        offset.y = -0.70f;
         xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
         Debug.Log("📏 XR Origin Y offset set to -0.90f for consistency (delayed)");
     }

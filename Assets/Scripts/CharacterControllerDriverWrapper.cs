@@ -63,7 +63,7 @@ public void ApplyPersistentYOffset(bool force = false)
         return;
 
     Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-    offset.y = -0.90f;
+    offset.y = -0.70f;
     xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
 
     offsetApplied = true;
@@ -106,7 +106,7 @@ public void ForceUpdateCharacterController()
 if (xrOrigin.CameraFloorOffsetObject != null)
 {
     Vector3 offset = xrOrigin.CameraFloorOffsetObject.transform.localPosition;
-    offset.y = -0.90f;
+    offset.y = -0.70f;
     xrOrigin.CameraFloorOffsetObject.transform.localPosition = offset;
     Debug.Log("📏 Re-applied -0.90f offset after character controller sync.");
 }
